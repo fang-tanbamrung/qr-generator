@@ -1,13 +1,20 @@
 import QRCode from "qrcode";
 import { useCallback, useRef, useState } from "react";
+import { AppSelect } from "./components/Select";
+
+const sizes = Array.from({ length: 9 }, (_, i) => ({
+  label: `${(i + 1) * 100}px`,
+  value: `${(i + 1) * 100}`,
+}));
 
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isGenerated, setIsGenerated] = useState(false);
+  const [size, setSize] = useState(sizes[2].value);
   const [url, setUrl] = useState("");
 
   const handleGenerateQRCode = useCallback(async () => {
-    if (canvasRef.current) {
+    if (canvasRef.current && url) {
       try {
         await QRCode.toCanvas(canvasRef.current, url, {
           width: 200,
@@ -20,15 +27,21 @@ function App() {
     }
   }, [url]);
 
-  const downloadQRCode = useCallback(() => {
+  const downloadQRCode = useCallback(async () => {
     if (canvasRef.current) {
-      const canvas = canvasRef.current;
+      const canvas = document.createElement("canvas");
+      canvas.width = 200;
+      canvas.height = 200;
+      await QRCode.toCanvas(canvas, url, {
+        width: Number(size),
+        margin: 2,
+      });
       const link = document.createElement("a");
       link.href = canvas.toDataURL();
-      link.download = `${url}.png`;
+      link.download = `${url}-${size}x${size}px.png`;
       link.click();
     }
-  }, [url]);
+  }, [url, size]);
 
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
@@ -58,9 +71,10 @@ function App() {
         </button>
       </form>
       <div>
-        <canvas ref={canvasRef} />
-        {isGenerated && (
+        <canvas ref={canvasRef} hidden={!isGenerated} />
+        {isGenerated ? (
           <>
+            <AppSelect items={sizes} value={size} onChange={setSize} />
             <button
               className="rounded w-full mt-2 text-white bg-blue-400 cursor-pointer px-2 py-1"
               onClick={downloadQRCode}
@@ -68,6 +82,8 @@ function App() {
               Download
             </button>
           </>
+        ) : (
+          <img src="/qr.svg" alt="QR Code" className=" w-[200px] h-[200px]" />
         )}
       </div>
     </div>
